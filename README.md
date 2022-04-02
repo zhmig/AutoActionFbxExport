@@ -1,1 +1,2 @@
 # AutoActionFbxExport
+maya2020可以利用bookmark进行标识之后分段导出

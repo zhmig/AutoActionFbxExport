@@ -6,7 +6,7 @@ Date          : 2022-02-08 09:51:02
 FilePath      : \AutoActionFbxExport\AutoActionFbxExport.py
 version       : 
 LastEditors   : zhenghaoming
-LastEditTime  : 2022-04-02 13:27:23
+LastEditTime  : 2022-04-28 11:37:06
 '''
 import os,sys
 
@@ -93,7 +93,7 @@ class Main(QDialog):
         self.setWindowFlags(self.windowFlags() ^ Qt.WindowContextHelpButtonHint)#隐藏界面问号按钮
 
         # 1、提供 .css 或者 .qss 样式文件路径
-        style_file = "D:/ScriptProjs/BooBoo/Diffnes.qss"
+        style_file = r"D:\ScriptProjs\Qss\Combinear.qss"
         if os.path.isfile(style_file):
             # 2、读取样式文件内容
             with open(style_file, "r") as file:
@@ -108,12 +108,13 @@ class Main(QDialog):
         self.autobatch_widgets()
         self.exp_obj_widgets()
         self.add_opt_widgets()
-        self.mark_seg_widgets()
+        # self.mark_seg_widgets()
         self.fbx_exp_opt_widgets()
         self.table_btn()
         self.create_layout()
 
         load_plugin('fbxmaya.mll')
+        load_plugin('timeSliderBookmark.mll')
 
     def imp_widgets(self):
         self.imp_grpbox = QGroupBox("Target Folder")
@@ -248,24 +249,24 @@ class Main(QDialog):
         self.addOpt_mainLayout.addWidget(self.delExtFrame_chbox)
         self.addOpt_mainLayout.addWidget(self.delNonIntFrame_chbox)
 
-    def mark_seg_widgets(self):
-        self.markSeg_grpbox = QGroupBox("Mark Segment")
-        self.markSeg_grpbox.setEnabled(False)
-        self.markSeg_mainLayout = QHBoxLayout(self.markSeg_grpbox)
+    # def mark_seg_widgets(self):
+    #     self.markSeg_grpbox = QGroupBox("Mark Segment")
+    #     self.markSeg_grpbox.setEnabled(False)
+    #     self.markSeg_mainLayout = QHBoxLayout(self.markSeg_grpbox)
 
-        self.markSeg_chbox = QCheckBox("Segment Mark Obj: ")
-        self.markSeg_chbox.setChecked(False)
-        self.markSeg_lineTx = QLineEdit()
-        self.markSeg_lineTx.setEnabled(False)
-        self.markSeg_btn = QPushButton("Selection Tool")
-        self.markSeg_btn.setEnabled(False)
+    #     self.markSeg_chbox = QCheckBox("Segment Mark Obj: ")
+    #     self.markSeg_chbox.setChecked(False)
+    #     self.markSeg_lineTx = QLineEdit()
+    #     self.markSeg_lineTx.setEnabled(False)
+    #     self.markSeg_btn = QPushButton("Selection Tool")
+    #     self.markSeg_btn.setEnabled(False)
 
-        self.markSeg_chbox.clicked['bool'].connect(self.markSeg_lineTx.setEnabled)
-        self.markSeg_chbox.clicked['bool'].connect(self.markSeg_btn.setEnabled)
+    #     self.markSeg_chbox.clicked['bool'].connect(self.markSeg_lineTx.setEnabled)
+    #     self.markSeg_chbox.clicked['bool'].connect(self.markSeg_btn.setEnabled)
 
-        self.markSeg_mainLayout.addWidget(self.markSeg_chbox)
-        self.markSeg_mainLayout.addWidget(self.markSeg_lineTx)
-        self.markSeg_mainLayout.addWidget(self.markSeg_btn)
+    #     self.markSeg_mainLayout.addWidget(self.markSeg_chbox)
+    #     self.markSeg_mainLayout.addWidget(self.markSeg_lineTx)
+    #     self.markSeg_mainLayout.addWidget(self.markSeg_btn)
 
     def fbx_exp_opt_widgets(self):
         self.fbxExpOpt_grpbox = QGroupBox("Fbx Exp Opt")
@@ -376,7 +377,7 @@ class Main(QDialog):
         set_par_mainlay.addLayout(self.autobatch_mainlayout)
         set_par_mainlay.addWidget(self.expObj_grpbox)
         set_par_mainlay.addWidget(self.addOpt_grpbox)
-        set_par_mainlay.addWidget(self.markSeg_grpbox)
+        # set_par_mainlay.addWidget(self.markSeg_grpbox)
         set_par_mainlay.addWidget(self.fbxExpOpt_grpbox)
 
         self.vLayoutWidget2 = QWidget(self.main_splitter)
@@ -459,17 +460,19 @@ class Main(QDialog):
         print (u"Row Count %s Line \n"% rowCount)
         return True
 
-    def reset_zero(self,reset_obj):
+    def reset_zero(self,reset_obj,StartFrame,EndFrame):
+        print ("zeset zero is already\n")
         if cmds.objExists(("|%s" % reset_obj)) == 1:
             reset_obj = ("|%s" % reset_obj)
             tran = ["X","Y","Z"]
             for t in range(len(tran)):
                 connode = cmds.findKeyframe(reset_obj, curve=True, at=("translate%s"%tran[t]) )
-                all_keyframes = cmds.keyframe(connode[0], q=True)
-                start_v = cmds.keyframe(connode[0], q=True, eval=True, time=(all_keyframes[0],all_keyframes[0]))[0]
+
+                start_v = cmds.keyframe(connode[0], q=True, eval=True, time=(int(StartFrame),int(StartFrame)))[0]
                 
-                v = cmds.keyframe(reset_obj,q=True, vc=True, at=("translate%s"%tran[t]) )
-                for i in range(len(v)):
+                v = cmds.keyframe(reset_obj,q=True, vc=True, at=("translate%s"%tran[t]))
+                tc = cmds.keyframe(reset_obj,q=True, tc=True, at=("translate%s"%tran[t]))
+                for i in range(tc.index(StartFrame),tc.index(EndFrame)+1):
                     value = v[i]-start_v
                     cmds.keyframe( connode[0],e=True, index=(i, (i)), a=True, vc = value)
     
@@ -493,11 +496,11 @@ class Main(QDialog):
         else:
             time_id = self.timnerange_RadioBtnGrp.checkedId()
             if time_id == 1:
-                save_data['default'] = (int(cmds.playbackOptions(q=True, min=True)),
-                                        int(cmds.playbackOptions(q=True, max=True)))
+                save_data['default'] = (cmds.playbackOptions(q=True, min=True),
+                                        cmds.playbackOptions(q=True, max=True))
             else:
-                save_data['default'] = (int(cmds.playbackOptions(q=True, ast=True)),
-                                        int(cmds.playbackOptions(q=True, aet=True)))
+                save_data['default'] = (cmds.playbackOptions(q=True, ast=True),
+                                        cmds.playbackOptions(q=True, aet=True))
 
         #sets是否存在，获取他行里名字
         if self.sets_lineTx.text():
@@ -526,38 +529,48 @@ class Main(QDialog):
         #去除关联
 
         #设置归0
-        if self.reset_chbox.isChecked() and self.reset_lineTx.text() != "":
-            self.reset_zero(self.reset_lineTx.text())
-
         for name,frame in save_data.items():
             if name is not "default":
                 SaveFilePath = "%s_%s.fbx" %(os.path.splitext(save_filePath)[0],name)
+            else:
+                SaveFilePath = save_filePath
             StartFrame,EndFrame = frame
-            StartFrame = int(StartFrame)
-            EndFrame = int(EndFrame)
-            #导出设置
+            
+            if self.reset_chbox.isChecked() and self.reset_lineTx.text() != "":
+                self.reset_zero(self.reset_lineTx.text(),StartFrame,EndFrame)
+
+            # StartFrame = int(StartFrame)
+            # EndFrame = int(EndFrame)
+            clip_name = os.path.basename(SaveFilePath).split('.', 1)[0]
+            # #导出设置
             pm.mel.FBXResetExport()
-            pm.mel.eval('FBXExportSplitAnimationIntoTakes -c')
+            pm.mel.FBXExportSplitAnimationIntoTakes(clear=None)
+            pm.mel.FBXExportSplitAnimationIntoTakes(int(StartFrame), int(EndFrame), v=clip_name)
+            pm.mel.FBXExportDeleteOriginalTakeOnSplitAnimation(v=True)
             pm.mel.FBXExportSmoothingGroups(v=True)
             pm.mel.FBXExportSmoothMesh(v=True)
             pm.mel.FBXExportReferencedAssetsContent(v=True)
+            pm.mel.FBXExportAnimationOnly(v=False)
             pm.mel.FBXExportBakeComplexAnimation(v=True)
-            pm.mel.FBXExportBakeComplexStart(v=StartFrame)
-            pm.mel.FBXExportBakeComplexEnd(v=EndFrame)
-            # pm.mel.FBXExportSkins(v=True)
-            # pm.mel.FBXExportShapes(v=True)
+            pm.mel.FBXExportBakeComplexStart(v=int(StartFrame))
+            pm.mel.FBXExportBakeComplexEnd(v=int(EndFrame))
+            pm.mel.FBXExportBakeResampleAnimation(v=True)
+            pm.mel.FBXExportSkins(v=True)
+            pm.mel.FBXExportShapes(v=True)
             pm.mel.FBXExportInputConnections(v=False)
             pm.mel.FBXExportConstraints(v=False)
             pm.mel.FBXExportUpAxis('y')
             pm.mel.FBXExportFileVersion(v='FBX201300')
             pm.mel.FBXExportInAscii(v=True)
             pm.mel.FBXExportEmbeddedTextures(v=False)
+            pm.mel.FBXExportShowUI(v=False)
+
 
             #导出
-            cmds.select(cl = True)
-            cmds.select(allbone,add=True)
-            pm.mel.eval('FBXExportSplitAnimationIntoTakes -v \"tata\" %d %d'%(int(StartFrame), int(EndFrame)))
-            cmds.FBXExport('-file', SaveFilePath, '-s')
+            pm.select(cl = True)
+            pm.select(allbone,add=True)
+            pm.mel.eval('FBXExport -file "%s" -s' % SaveFilePath)
+            pm.mel.FBXExportSplitAnimationIntoTakes(clear=None)
             # pm.mel.FBXExport(s=True, f=SaveFilePath)
             # cmds.file(save_filePath.decode('utf8'), options='v=0;', typ='FBX export', pr=True, es=True, force=True)
         
@@ -580,6 +593,7 @@ class Main(QDialog):
             # print ("\nThe Maya File Path: %s " % FilePath)
             cmds.file(FilePath,f=True,op="v=0",iv=True,o=True)
             self.export_ani_assets(SavePath)
+        cmds.file(new=True,f=True)
 
 if __name__ == "__main__":
     try:
